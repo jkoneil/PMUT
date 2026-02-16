@@ -1,5 +1,5 @@
 % This script is written to simulate 61 channel data collected by PMUT
-% array
+% array, outputting multiplexed records (1024 x 16 x 4)
 
 % Initiate a 2D matrix
 % vertical axia: depth
@@ -49,5 +49,18 @@ all_data(:,first_layer) = all_data(:,first_layer) * int_curve_hor(1);
 all_data(:,second_layer) = all_data(:,second_layer) * int_curve_hor(2);
 all_data(:,third_layer) = all_data(:,third_layer) * int_curve_hor(3);
 
+%% Convert full 61-channel data into multiplexed form with output size: 1024 x 16 x 4
+
+multiplexed_data = zeros(num_samples, 16, 4);
+
+for rec = 1:16
+    for sec = 1:4
+        ch = (sec-1)*16 + rec;
+        if ch <= 61
+            multiplexed_data(:, rec, sec) = all_data(:, ch);
+        end
+    end
+end
+
 % save data
-save('data_visualization.mat','all_data');
+save('data_visualization.mat','multiplexed_data');
