@@ -4,7 +4,8 @@ pitch = 80.0
 
 rotation_deg = 30.0
 
-coords = np.round(array([
+coords = np.round(
+    100 * np.array([
     [0.0, 3.2],
     [0.692820323027551, 2.8],
     [1.385640646055102, 2.4],
