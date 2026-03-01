@@ -8,7 +8,7 @@ clear all; clc;
 load('data_visualization.mat') % simulated data
 load('hex61_pitch80.mat');
 locations_x_y = coords;
-full_data = combined_multiplexed(multiplexed_data);
+full_data = combine_multiplexed(multiplexed_data);
 
 % plot out all coordinates on a 2D plane
 x = coords(:,1)';
