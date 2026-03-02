@@ -22,8 +22,6 @@ def quick_3D_visualization():
     # Extract coordinates
     x = coords[:, 0]
     y = coords[:, 1]
-    print(x)
-    print(y)
 
     # Layer index definitions
     layer_1 = np.array([1,2,3,4,5,6,11,12,18,19,26,27,35,
@@ -71,7 +69,7 @@ def quick_3D_visualization():
 
     # Remove NaNs
     interpolated_intensity = np.nan_to_num(interpolated_intensity)
-    
+
 
     # Plot
     plt.figure(figsize=(6,6))
@@ -84,7 +82,7 @@ def quick_3D_visualization():
         extent=[-400, 400, -400, 400],
         cmap='hot',
         aspect='equal',
-        interpolation='none',   # Important for MATLAB-like rendering
+        interpolation='none',
         vmin=0.6,
         vmax=1 
     )
