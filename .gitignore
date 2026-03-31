@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 volume_1.npy
 volume.npy
+volume_origin.npz

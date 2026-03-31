@@ -29,12 +29,15 @@ num_samples = size(full_data, 1); % 1024
 %grid_range_x_y = -400:4:400; %-400:1:400;
 % Create and crop grid to only cover the hexagon
 %margin = 10; % small padding
-grid_range_x = min(x) : 4 : max(x);
-grid_range_y = min(y) : 4 : max(y);
+% Grid spacing, adjust for resolution
+dx = 10;
+dy = 10;
+grid_range_x = min(x) : dx : max(x);
+grid_range_y = min(y) : dy : max(y);
 [grid_x, grid_y] = meshgrid(grid_range_x, grid_range_y);
 
 % Allocate 3D volume
-volume_3d = zeros(length(grid_range_y), length(grid_range_x), num_samples);
+volume_3d = zeros(length(grid_range_y), length(grid_range_x), num_samples, 'single');
 
 %% Loop through all depths
 for depth_idx = 1:num_samples
@@ -46,7 +49,7 @@ for depth_idx = 1:num_samples
     % interpolate to the 2D grid
     slice = griddata(known_x, known_y, known_intensity, grid_x, grid_y, 'cubic');
     slice(isnan(slice)) = 0;   % replace NaNs with 0
-    
+    slice = single(slice);      % convert to float32
     volume_3d(:, :, depth_idx) = slice;
 end
 
@@ -55,6 +58,7 @@ end
 sigma_xy = 1e-6;    % almost no blur in x/y
 sigma_z = 1e-10;       % blur along depth
 volume_3d_smoothed = imgaussfilt3(volume_3d, [sigma_xy sigma_xy sigma_z]);
+volume_3d_smoothed = single(volume_3d_smoothed);  % ensure it's float32
 % normalize the smoothed volume
 volume_3d_smoothed = volume_3d_smoothed / max(volume_3d_smoothed(:));
 % Plot the 3D interpolated images

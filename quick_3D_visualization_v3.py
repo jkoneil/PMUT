@@ -19,21 +19,21 @@ def quick_3D_visualization():
     y = coords[:, 1]
 
     # Grid setup
-    dx = 1
-    dy = 1
+    dx = 5
+    dy = 5
 
     max_extent = max(np.abs(coords[:, 0]).max(), np.abs(coords[:, 1]).max())
-    grid_x_vals = np.linspace(-max_extent, max_extent, num=int(2*max_extent/dx)+1)
-    grid_y_vals = np.linspace(-max_extent, max_extent, num=int(2*max_extent/dy)+1)
+    grid_x_vals = np.arange(-max_extent, max_extent + dx, dx)
+    grid_y_vals = np.arange(-max_extent, max_extent + dy, dy)
     grid_x, grid_y = np.meshgrid(grid_x_vals, grid_y_vals)
 
     # Volume construction
     dz_sample = 37  # µm per sample
-    depth_step = 4 # Depth subsampling (important for performance)
+    depth_step = 1 # Depth subsampling (important for performance)
     dz = dz_sample * depth_step
 
     num_slices = len(range(0, full_data.shape[0], depth_step))
-    volume = np.zeros((grid_x.shape[0], grid_x.shape[1], num_slices))
+    volume = np.zeros((grid_x.shape[0], grid_x.shape[1], num_slices), dtype=np.float32)
 
     for i, t in enumerate(range(0, full_data.shape[0], depth_step)):
 

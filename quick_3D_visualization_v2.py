@@ -55,8 +55,11 @@ def quick_3D_visualization():
         intensity[i] = 1.0
 
     # Create grid (MATLAB: -400:1:400)
-    grid_x_vals = np.arange(-400, 401, 1)
-    grid_y_vals = np.arange(-400, 401, 1)
+    dx = 5
+    dy = 5
+
+    grid_x_vals = np.arange(-400, 401, dx)
+    grid_y_vals = np.arange(-400, 401, dy)
 
     grid_x, grid_y = np.meshgrid(grid_x_vals, grid_y_vals)
 

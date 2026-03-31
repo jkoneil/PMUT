@@ -3,6 +3,8 @@ import numpy as np
 
 filePath = "/Users/jillian/Desktop/PMUT/volume.npy" # Adjust as needed
 volume = np.load(filePath)
+originFile = "/Users/jillian/Desktop/PMUT/volume_origin.npz" # Adjust as needed
+originData = np.load(originFile)
 
 volume_slicer = np.transpose(volume, (2, 1, 0)) # Slicer expects (x,y,z)
 
@@ -12,11 +14,14 @@ volumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScalarVolumeNode")
 # Take NumPy array and copy into slicer volume node
 slicer.util.updateVolumeFromArray(volumeNode, volume_slicer)
 
-dx = 1 / 1000
-dy = 1 / 1000
-dz = 37*2/1000 # Take into account depth sampling
+# Load origin and spacing info saved from build_volume
+origin = originData["origin"]
+spacing = originData["spacing"]
 
-volumeNode.SetSpacing(dx, dy, dz)
+# Apply spacing and origin
+volumeNode.SetSpacing(spacing[0], spacing[1], spacing[2])
+volumeNode.SetOrigin(origin[0], origin[1], origin[2])
+
 slicer.util.setSliceViewerLayers(background=volumeNode)
 
 # Get the Volume Rendering module logic
