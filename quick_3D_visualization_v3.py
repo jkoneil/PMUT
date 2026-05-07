@@ -1,10 +1,11 @@
 import numpy as np
 from scipy.interpolate import griddata
-import pyvista as pv
 import combine_multiplexed
 import hex61_pitch80
 
-def quick_3D_visualization():
+from visualize_volume import show_volume
+
+def build_interpolated_volume():
 
     # Load data
     data = np.load("data_visualization.npz")
@@ -38,7 +39,7 @@ def quick_3D_visualization():
     for i, t in enumerate(range(0, full_data.shape[0], depth_step)):
 
         intensity = full_data[t, :]
-
+        # fix later and use DAS
         interp_img = griddata(
             (x, y),
             intensity,
@@ -67,55 +68,9 @@ def quick_3D_visualization():
         volume = np.pad(volume,
                         ((0, 0), (0, 0), (0, extra_slices)),
                         mode='constant', constant_values=0)
-
-    # PyVista grid
-    scale = 1e-3 # put in mm
-    grid = pv.ImageData()
-    grid.dimensions = volume.shape # Set volume dimensions
-    
-    # Define physical origin of the dataset
-    grid.origin = ( 
-        grid_x_vals.min() * scale, 
-        grid_y_vals.min() * scale, 
-        0
-    )
-
-    grid.spacing = (
-        dx * scale, 
-        dy * scale, 
-        dz * scale
-    )
-    grid.point_data["intensity"] = volume.flatten(order="F")
-
-    # Visualization
-    plotter = pv.Plotter()
-    plotter.add_volume(
-        grid,
-        scalars="intensity",
-        cmap="hot",
-        opacity="sigmoid",
-        shade=True
-    )
-
-    # Z axis ticks
-    z_max = dz * scale * (volume.shape[2] - 1)
-    tick_spacing = 5
-    n_zlabels = int(np.ceil(z_max / tick_spacing)) + 1  # include bottom tick at 0
-
-    plotter.show_bounds(
-        grid=True,
-        location='outer',
-        xtitle='x (mm)',
-        ytitle='y (mm)',
-        ztitle='z (mm)',
-        ticks='outside',
-        fmt="%.1f",
-        n_zlabels=n_zlabels
-    )
-
-    plotter.add_axes(line_width=2)
-    plotter.show()
+    return volume, dx, dy, dz, grid_x_vals.min(), grid_y_vals.min()
 
 
 if __name__ == "__main__":
-    quick_3D_visualization() 
+    volume, dx, dy, dz, x_min, y_min = build_interpolated_volume()
+    show_volume(volume, dx, dy, dz, x_min, y_min)
