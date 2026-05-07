@@ -1,9 +1,13 @@
 import slicer
 import numpy as np
+import os
 
-filePath = "/Users/jillian/Desktop/PMUT/volume.npy" # Adjust as needed
-volume = np.load(filePath)
-originFile = "/Users/jillian/Desktop/PMUT/volume_origin.npz" # Adjust as needed
+# Always look in the same directory as this script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+filePath   = os.path.join(script_dir, "volume.npy")
+originFile = os.path.join(script_dir, "volume_origin.npz")
+
+volume     = np.load(filePath)
 originData = np.load(originFile)
 
 volume_slicer = np.transpose(volume, (2, 1, 0)) # Slicer expects (x,y,z)
