@@ -4,3 +4,9 @@ __pycache__/
 volume_1.npy
 volume.npy
 volume_origin.npz
+
+.vscode/
+*.png
+*.so
+
+build/

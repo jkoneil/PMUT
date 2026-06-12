@@ -14,9 +14,8 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../..'))
 
-from visualize_volume import show_volume
-from TR_Reconstruction import time_reversal_reconstruction
-from visualize_volume import show_volume
+from tr_cpp import time_reversal_reconstruction
+#from visualize_volume import show_volume
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 
@@ -43,7 +42,7 @@ PASignal[:79, :] = 0
 # RECONSTRUCTION PARAMETERS
 # =============================================================================
 
-# Load pMUT element center coordinates (X, Y) in mm
+# Load PMUT element center coordinates (X, Y) in mm
 coord = np.loadtxt(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'coordsHexagonal0p5mm.txt'))
 
 co  = 1.5    # speed of sound, mm/us (water at room temp)
@@ -63,7 +62,7 @@ zo = np.arange(zmin,  zmax + dzo, dzo)
 
 #Img = np.zeros((len(zo), len(xo), len(yo)), dtype=np.float64)
 
-ThetaMax = np.pi / 6  # maximum half-angle (30 degrees → 60 degree sector)
+ThetaMax = np.pi / 6  # maximum half-angle
 
 # =============================================================================
 # TIME REVERSAL RECONSTRUCTION — parallelized over sensors
@@ -89,7 +88,7 @@ print(f"Reconstruction complete in {time.time() - t_start:.1f} seconds.")
 # --- 2D slice at X = 0 ---
 x0_idx = 131
 
-ImgSlice = np.squeeze(Img[:, x0_idx, :])  # shape: (len(zo), len(yo))
+ImgSlice = np.squeeze(Img[:, x0_idx, :])
 
 X0Max  = np.max(np.abs(Img[:, x0_idx, :]))
 ImgMax = np.max(np.abs(Img))
@@ -149,15 +148,14 @@ show_volume(
 )
 """
 # Isosurface image - looks similar to current MATLAB version
-Img1 = np.transpose(Img, (1, 2, 0))  # (zo, xo, yo) → (xo, yo, zo)
+Img1 = np.transpose(Img, (1, 2, 0))
 ImgMax = np.max(np.abs(Img))
 
 fig3d = plt.figure(figsize=(8, 8))
 ax3d  = fig3d.add_subplot(111, projection='3d')
 
 try:
-    verts, faces, _, _ = measure.marching_cubes(Img1, level=ImgMax / 2,
-                                                 spacing=(dxo, dyo, dzo))
+    verts, faces, _, _ = measure.marching_cubes(Img1, level=ImgMax / 2, spacing=(dxo, dyo, dzo))
     verts[:, 0] += xo[0]
     verts[:, 1] += yo[0]
     verts[:, 2] += zo[0]
