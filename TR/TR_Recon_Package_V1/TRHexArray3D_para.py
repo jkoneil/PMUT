@@ -86,7 +86,7 @@ print(f"Reconstruction complete in {time.time() - t_start:.1f} seconds.")
 # =============================================================================
 
 # --- 2D slice at X = 0 ---
-x0_idx = 131
+x0_idx = np.argmin(np.abs(xo))
 
 ImgSlice = np.squeeze(Img[:, x0_idx, :])
 

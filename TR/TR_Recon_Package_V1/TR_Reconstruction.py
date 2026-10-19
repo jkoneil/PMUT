@@ -30,7 +30,7 @@ def reconstruct_sensor(XY, coord, PASignal, zo, xo, yo,
         dphi   = dTheta
 
         phi_vals   = np.arange(0, 2 * np.pi, dphi)
-        theta_vals = np.arange(-ThetaMax, ThetaMax + dTheta, dTheta)
+        theta_vals = np.arange(dTheta / 4, ThetaMax, dTheta)
 
         PHI, THETA = np.meshgrid(phi_vals, theta_vals)
         PHI   = PHI.ravel()

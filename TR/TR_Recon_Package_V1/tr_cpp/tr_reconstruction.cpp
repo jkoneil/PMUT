@@ -61,7 +61,7 @@ void reconstruct_sensor_inplace(
             sinPhi[ip] = sin(ip * dphi);
         }
 
-        for (double theta = -ThetaMax; theta <= ThetaMax + dTheta; theta += dTheta) // loop over elevation angles 
+        for (double theta = dTheta / 4; theta <= ThetaMax; theta += dTheta) // loop over elevation angles 
         {
             double cosT = cos(theta), sinT = sin(theta);
             double zval = l * cosT - zmin;
