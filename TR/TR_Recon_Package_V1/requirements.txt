@@ -1,0 +1,7 @@
+numpy
+scipy
+matplotlib
+scikit-image
+pybind11
+# GPU backend: pick the one matching `nvcc --version` (12.x -> cuda12x, 11.x -> cuda11x)
+cupy-cuda12x
