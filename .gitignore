@@ -8,5 +8,6 @@ volume_origin.npz
 .vscode/
 *.png
 *.so
+.gitignore
 
 build/

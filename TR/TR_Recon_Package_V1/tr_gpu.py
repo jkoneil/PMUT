@@ -1,13 +1,11 @@
 """
-GPU time-reversal reconstruction (voxel-gather formulation) for the PMUT array.
+GPU time-reversal reconstruction
 
 Same physics as tr_reconstruction.cpp, but with the loops inverted:
   CPU (scatter): for sensor -> for time -> for shell angle -> add into voxel
   GPU (gather):  one thread per voxel -> for sensor -> look up signal at t = R/(co*dt)
 
 No two threads write to the same voxel, so no atomics are needed.
-
-Requires: pip install cupy-cuda12x   (match your CUDA toolkit; check with `nvcc --version`)
 """
 
 import os

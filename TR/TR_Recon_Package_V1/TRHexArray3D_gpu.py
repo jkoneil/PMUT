@@ -1,10 +1,10 @@
-""" Written with Claude - needs to be heavily edited / checked"""
+""" Written with help of Claude """
 
 """
 3D Photoacoustic Image Reconstruction - Time Reversal
 Backends:  gpu (CUDA via CuPy, default if available)  |  cpu (C++/OpenMP via tr_cpp)
 
-Usage (run from this folder):
+Usage:
     python3 TRHexArray3D_gpu.py              # auto: GPU if CuPy + NVIDIA GPU found, else CPU
     python3 TRHexArray3D_gpu.py --backend gpu
     python3 TRHexArray3D_gpu.py --backend cpu
@@ -38,7 +38,7 @@ sys.path.insert(0, HERE)
 parser = argparse.ArgumentParser()
 parser.add_argument('--backend', choices=['auto', 'gpu', 'cpu'], default='auto')
 parser.add_argument('--compare', action='store_true', help='run GPU and CPU, report agreement')
-parser.add_argument('--data', default='Processed/d3_PMUT_61_channels_400.mat')
+parser.add_argument('--data', default='../Processed/d3_PMUT_61_channels_400.mat')
 args = parser.parse_args()
 
 # =============================================================================
@@ -57,11 +57,16 @@ coord = np.loadtxt('coordsHexagonal0p5mm.txt')   # PMUT centers (file units; x0.
 # =============================================================================
 # PARAMETERS
 # =============================================================================
-co  = 1.5     # speed of sound, mm/us
-dt  = 0.02    # time step, us (50 MHz)
-dxo = dyo = dzo = 0.05   # voxel size, mm
-zmin, zmax = 0.0, 13.0
-xmax, ymax = 7.0, 7.0
+co  = 1.5    # speed of sound, mm/us (water at room temp)
+dt  = 0.02   # time step, microseconds (50 MHz sampling rate)
+dxo = 0.05   # voxel size x, mm
+dyo = 0.05   # voxel size y, mm
+dzo = 0.05   # voxel size z, mm
+
+zmin = 0.0   # axial bounds, mm
+zmax = 13.0
+xmax = 7.0   # lateral bounds, mm
+ymax = 7.0
 
 xo = np.arange(-xmax, xmax + dxo, dxo)
 yo = np.arange(-ymax, ymax + dyo, dyo)
@@ -73,25 +78,27 @@ ThetaMax = np.pi / 6
 # =============================================================================
 def gpu_available():
     try:
-        import cupy as cp
-        return cp.cuda.runtime.getDeviceCount() > 0
+        import cupy as cp # CuPy must be installed
+        return cp.cuda.runtime.getDeviceCount() > 0 # asks CUDA driver how many GPUs it sees
     except Exception:
         return False
 
+# Run time reversal reconstruction on GPU
 def run_gpu():
     import cupy as cp
     from tr_gpu import tr_gpu
     name = cp.cuda.runtime.getDeviceProperties(0)['name'].decode()
     print(f"[GPU] {name}")
     tr_gpu(PASignal, coord, zo, xo, yo, co, dt, ThetaMax)       # warm-up (kernel compile)
-    cp.cuda.Device().synchronize()
+    cp.cuda.Device().synchronize() # Synchronize so time is accurate
     t0 = time.time()
     img = tr_gpu(PASignal, coord, zo, xo, yo, co, dt, ThetaMax)
     cp.cuda.Device().synchronize()
     print(f"[GPU] reconstruction: {(time.time() - t0) * 1000:.1f} ms (incl. host<->device copies)")
     return img
 
-def run_cpu():
+# Run time reversal reconstruction on CPU
+def run_cpu(): 
     from tr_cpp import time_reversal_reconstruction
     print(f"[CPU] OpenMP threads: "
           f"{__import__('tr_cpp').num_threads if __import__('tr_cpp').openmp_enabled else 1}")
@@ -160,7 +167,7 @@ ax3d.set_title('3D PA Isosurface'); ax3d.legend()
 plt.tight_layout()
 plt.savefig('pa_isosurface_3d.png', dpi=150)
 
-if matplotlib.get_backend().lower() != 'agg':
+if matplotlib.get_backend().lower() != 'agg': # for headless space setup
     plt.show()
 else:
     print("Headless session: saved pa_slice_x0.png, pa_isosurface_3d.png, img_reconstruction.npy")
