@@ -10,23 +10,23 @@ using namespace std;
 namespace py = pybind11;
 
 void reconstruct_sensor_inplace(
-    py::array_t<double> PASignal,
-    py::array_t<double> coord,
-    py::array_t<double> zo, 
-    py::array_t<double> xo, 
-    py::array_t<double> yo,
-    double co, double dt, 
-    double dxo, 
-    double dyo, 
-    double dzo,
-    double zmin, 
-    double xmax, 
-    double ymax, 
-    double ThetaMax,
+    py::array_t<float> PASignal,
+    py::array_t<float> coord,
+    py::array_t<float> zo, 
+    py::array_t<float> xo, 
+    py::array_t<float> yo,
+    float co, float dt, 
+    float dxo, 
+    float dyo, 
+    float dzo,
+    float zmin, 
+    float xmax, 
+    float ymax, 
+    float ThetaMax,
     int XY,
-    vector<double>& ImgTemp,
+    vector<float>& ImgTemp,
     vector<float>&  NumPts,
-    vector<double>& ImgLocal)
+    vector<float>& ImgLocal)
 {
     auto sig = PASignal.unchecked<2>();
     auto crd = coord.unchecked<2>();
@@ -38,44 +38,44 @@ void reconstruct_sensor_inplace(
     fill(ImgTemp.begin(), ImgTemp.end(), 0.0);
     fill(NumPts.begin(),  NumPts.end(),  0.0f);
 
-    double Xsens = crd(XY, 0) * 0.001;
-    double Ysens = crd(XY, 1) * 0.001;
+    float Xsens = crd(XY, 0) * 0.001;
+    float Ysens = crd(XY, 1) * 0.001;
 
-    vector<double> Receive(nT - 1);
+    vector<float> Receive(nT - 1);
     for (int i = 0; i < nT - 1; i++)
         Receive[i] = sig(i+1, XY) - sig(i, XY);
 
     for (int t = 0; t < (int)Receive.size(); t++) // loop over time steps
     {
-        double l = (t + 1.0) * dt * co; // distance wave has travelled
+        float l = (t + 1.0) * dt * co; // distance wave has travelled
         if (l == 0.0) continue; // skip if distance is 0
 
-        double dTheta = M_PI / (l * M_PI / dxo);
-        double dphi   = dTheta;
+        float dTheta = M_PI / (l * M_PI / dxo);
+        float dphi   = dTheta;
 
         int nPhi = (int)(2 * M_PI / dphi);
-        vector<double> cosPhi(nPhi), sinPhi(nPhi); // to store precomputed trig values
+        vector<float> cosPhi(nPhi), sinPhi(nPhi); // to store precomputed trig values
         for (int ip = 0; ip < nPhi; ip++) 
         {
             cosPhi[ip] = cos(ip * dphi);
             sinPhi[ip] = sin(ip * dphi);
         }
 
-        for (double theta = dTheta / 4; theta <= ThetaMax; theta += dTheta) // loop over elevation angles 
+        for (float theta = dTheta / 4; theta <= ThetaMax; theta += dTheta) // loop over elevation angles 
         {
-            double cosT = cos(theta), sinT = sin(theta);
-            double zval = l * cosT - zmin;
+            float cosT = cos(theta), sinT = sin(theta);
+            float zval = l * cosT - zmin;
             if (zval < 0) continue; // skip if outside the volume
 
             int zind = (int)round(zval / dzo);
             if (zind < 0 || zind >= nz) continue;
 
-            double lsinT = l * sinT;
+            float lsinT = l * sinT;
 
             for (int ip = 0; ip < nPhi; ip++) 
             {
-                double xval = lsinT * cosPhi[ip] + Xsens + xmax;
-                double yval = lsinT * sinPhi[ip] + Ysens + ymax;
+                float xval = lsinT * cosPhi[ip] + Xsens + xmax;
+                float yval = lsinT * sinPhi[ip] + Ysens + ymax;
 
                 int xind = (int)round(xval / dxo);
                 int yind = (int)round(yval / dyo);
@@ -96,25 +96,25 @@ void reconstruct_sensor_inplace(
 }
 
 // Returns numpy array back to python
-py::array_t<double> time_reversal_reconstruction(
-    py::array_t<double> PASignal,
-    py::array_t<double> coord,
-    py::array_t<double> zo, py::array_t<double> xo, py::array_t<double> yo,
-    double co, double dt, double dxo, double dyo, double dzo,
-    double zmin, double xmax, double ymax, double ThetaMax)
+py::array_t<float> time_reversal_reconstruction(
+    py::array_t<float> PASignal,
+    py::array_t<float> coord,
+    py::array_t<float> zo, py::array_t<float> xo, py::array_t<float> yo,
+    float co, float dt, float dxo, float dyo, float dzo,
+    float zmin, float xmax, float ymax, float ThetaMax)
 {
     int nSensors = coord.shape(0);
     int nz = zo.size(), nx = xo.size(), ny = yo.size();
     int nVox = nz * nx * ny;
 
-    vector<double> Img(nVox, 0.0);
+    vector<float> Img(nVox, 0.0);
 
     #ifdef _OPENMP
     #pragma omp parallel // launch threads, everything in this block runs in parallel
     {
         // Each thread gets own buffers
-        vector<double> ImgLocal(nVox, 0.0);
-        vector<double> ImgTemp(nVox, 0.0);
+        vector<float> ImgLocal(nVox, 0.0);
+        vector<float> ImgTemp(nVox, 0.0);
         vector<float>  NumPts(nVox,  0.0f);
 
         #pragma omp for schedule(dynamic)
@@ -131,8 +131,8 @@ py::array_t<double> time_reversal_reconstruction(
     }
     #else // Same thing, no threading
     {
-        vector<double> ImgLocal(nVox, 0.0);
-        vector<double> ImgTemp(nVox, 0.0);
+        vector<float> ImgLocal(nVox, 0.0);
+        vector<float> ImgTemp(nVox, 0.0);
         vector<float>  NumPts(nVox,  0.0f);
         for (int XY = 0; XY < nSensors; XY++) {
             reconstruct_sensor_inplace(
@@ -146,7 +146,7 @@ py::array_t<double> time_reversal_reconstruction(
     #endif
 
     // Convert flat vector back into 3D numpy array
-    auto result = py::array_t<double>({nz, nx, ny});
+    auto result = py::array_t<float>({nz, nx, ny});
     auto r = result.mutable_unchecked<3>();
     for (int iz = 0; iz < nz; iz++)
         for (int ix = 0; ix < nx; ix++)
