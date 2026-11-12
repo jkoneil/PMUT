@@ -20,7 +20,8 @@ def _get_kernel():
     global _module
     if _module is None:
         import cupy as cp
-        _module = cp.RawModule(path=KERNEL_PATH)
+        with open(KERNEL_PATH, "r") as f:
+            _module = cp.RawModule(code=f.read())
     return _module.get_function("tr_gather")
 
 
