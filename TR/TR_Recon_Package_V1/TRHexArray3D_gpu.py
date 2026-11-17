@@ -109,14 +109,127 @@ def run_cpu():
     print(f"[CPU] reconstruction: {time.time() - t0:.2f} s")
     return img
 
+# =============================================================================
+# COMPARE / BENCHMARK  (used when --compare is given)
+# =============================================================================
+GPU_RUNS = 1             # timed GPU runs (after one untimed warm-up)
+CPU_RUNS = 1             # timed CPU runs (after one untimed warm-up)
+
+
+
+def time_runs(fn, n, sync=None):
+    """One untimed warm-up, then n timed runs. Returns (last result, array of seconds)."""
+    fn()
+    if sync:
+        sync()
+    times, out = [], None
+    for _ in range(n):
+        t0 = time.perf_counter()
+        out = fn()
+        if sync:
+            sync()
+        times.append(time.perf_counter() - t0)
+    return out, np.array(times)
+
+
+def compare_volumes(cpu, gpu):
+    """Agreement metrics. Each volume is divided by its own peak first, so overall scale is ignored."""
+    a = cpu.astype(np.float64)
+    b = gpu.astype(np.float64)
+    a /= np.abs(a).max()
+    b /= np.abs(b).max()
+    mask = (np.abs(a) > 0.1) | (np.abs(b) > 0.1)    # voxels where either image has real signal
+    d = a - b
+    pos = lambda k: np.array([zo[k[0]], xo[k[1]], yo[k[2]]])
+    ka = np.unravel_index(np.argmax(np.abs(a)), a.shape)
+    kb = np.unravel_index(np.argmax(np.abs(b)), b.shape)
+    res = {
+        'corr_all':        np.corrcoef(a.ravel(), b.ravel())[0, 1],
+        'corr_signal':     np.corrcoef(a[mask], b[mask])[0, 1],
+        'nrms_all':        np.linalg.norm(d) / np.linalg.norm(a),
+        'nrms_signal':     np.linalg.norm(d[mask]) / np.linalg.norm(a[mask]),
+        'max_diff':        np.abs(d).max(),
+        'frac_within_1pct': np.mean(np.abs(d) < 0.01),
+        'n_signal_voxels': int(mask.sum()),
+        'peak_cpu_mm':     pos(ka),
+        'peak_gpu_mm':     pos(kb),
+        'peak_offset_mm':  np.linalg.norm(pos(ka) - pos(kb)),
+    }
+    return res, a, b, d
+
+
 if args.compare:
-    Img_gpu = run_gpu()
-    Img_cpu = run_cpu()
-    a, b = np.abs(Img_cpu).ravel(), np.abs(Img_gpu).ravel()
-    print(f"correlation of |image| (CPU vs GPU): {np.corrcoef(a, b)[0, 1]:.4f}")
-    for name, im in (('CPU', Img_cpu), ('GPU', Img_gpu)):
-        k = np.unravel_index(np.argmax(np.abs(im)), im.shape)
-        print(f"peak {name}: z={zo[k[0]]:.2f} x={xo[k[1]]:.2f} y={yo[k[2]]:.2f} mm")
+    import cupy as cp
+    import tr_cpp
+    from tr_gpu import tr_gpu
+    from tr_cpp import time_reversal_reconstruction
+
+    gpu_name = cp.cuda.runtime.getDeviceProperties(0)['name'].decode()
+    cpu_threads = tr_cpp.num_threads if tr_cpp.openmp_enabled else 1
+    print(f"GPU: {gpu_name}   |   CPU OpenMP threads: {cpu_threads}")
+    print(f"Grid: {len(zo)} x {len(xo)} x {len(yo)} voxels ({dxo} mm)\n")
+
+    print(f"Running GPU ({GPU_RUNS} timed runs + warm-up)...")
+    Img_gpu, t_gpu = time_runs(
+        lambda: tr_gpu(PASignal, coord, zo, xo, yo, co, dt, ThetaMax),
+        GPU_RUNS, cp.cuda.Device().synchronize)
+
+    print(f"Running CPU ({CPU_RUNS} timed runs + warm-up)...")
+    Img_cpu, t_cpu = time_runs(
+        lambda: time_reversal_reconstruction(PASignal, coord, zo, xo, yo,
+                                             co, dt, dxo, dyo, dzo,
+                                             zmin, xmax, ymax, ThetaMax),
+        CPU_RUNS)
+
+    # ---- speed ----
+    g_med, c_med = np.median(t_gpu), np.median(t_cpu)
+    print("\n================ SPEED ================")
+    print(f"GPU  median {g_med*1000:9.1f} ms   (min {t_gpu.min()*1000:.1f}, max {t_gpu.max()*1000:.1f})   {1/g_med:7.1f} frames/s   [incl. host<->device copies]")
+    print(f"CPU  median {c_med*1000:9.1f} ms   (min {t_cpu.min()*1000:.1f}, max {t_cpu.max()*1000:.1f})   {1/c_med:7.1f} frames/s")
+    print(f"Speedup (CPU median / GPU median): {c_med / g_med:.1f}x")
+
+    # ---- agreement ----
+    res, a_n, b_n, d_n = compare_volumes(Img_cpu, Img_gpu)
+    print("\n============== AGREEMENT ==============")
+    print(f"Correlation, whole volume:           {res['corr_all']:.4f}")
+    print(f"Correlation, signal voxels only:     {res['corr_signal']:.4f}   ({res['n_signal_voxels']} voxels above 10% of peak)")
+    print(f"Normalized RMS diff, whole volume:   {res['nrms_all']:.4f}")
+    print(f"Normalized RMS diff, signal voxels:  {res['nrms_signal']:.4f}")
+    print(f"Max |difference| (fraction of peak): {res['max_diff']:.4f}")
+    print(f"Voxels within 1% of peak:            {100*res['frac_within_1pct']:.2f}%")
+    print(f"Peak CPU (z,x,y) mm: {np.round(res['peak_cpu_mm'], 3)}   Peak GPU: {np.round(res['peak_gpu_mm'], 3)}")
+    print(f"Peak position offset:                {res['peak_offset_mm']:.3f} mm")
+
+    # ---- difference picture (X = 0 slice, shared color scale) ----
+    ix = np.argmin(np.abs(xo))
+    fig, axs = plt.subplots(1, 3, figsize=(14, 7))
+    ext = [yo[0], yo[-1], zo[0], zo[-1]]
+    for ax, im_, title, cm, lim in ((axs[0], a_n[:, ix, :], 'CPU (normalized)', 'hot', (0, 1)),
+                                    (axs[1], b_n[:, ix, :], 'GPU (normalized)', 'hot', (0, 1)),
+                                    (axs[2], d_n[:, ix, :], 'CPU - GPU', 'coolwarm', (-0.2, 0.2))):
+        h = ax.imshow(im_, extent=ext, origin='lower', aspect='equal', cmap=cm, vmin=lim[0], vmax=lim[1])
+        ax.set_title(title); ax.set_xlabel('y [mm]'); ax.set_ylabel('z [mm]')
+        plt.colorbar(h, ax=ax, fraction=0.046)
+    plt.tight_layout()
+    plt.savefig('compare_x0.png', dpi=150)
+
+    # ---- save volumes and append a row to a results table ----
+    np.save('img_cpu.npy', Img_cpu)
+    np.save('img_gpu.npy', Img_gpu)
+    import csv, datetime
+    csv_path = 'benchmark_results.csv'
+    new_file = not os.path.exists(csv_path)
+    with open(csv_path, 'a', newline='') as f:
+        w = csv.writer(f)
+        if new_file:
+            w.writerow(['date', 'dataset', 'voxel_mm', 'gpu', 'cpu_threads', 'gpu_runs', 'cpu_runs',
+                        'gpu_median_ms', 'cpu_median_ms', 'speedup', 'corr_signal', 'nrms_signal',
+                        'peak_offset_mm'])
+        w.writerow([datetime.datetime.now().isoformat(timespec='seconds'), os.path.basename(args.data), dxo,
+                    gpu_name, cpu_threads, GPU_RUNS, CPU_RUNS, round(g_med*1000, 2), round(c_med*1000, 2),
+                    round(c_med / g_med, 2), round(res['corr_signal'], 5), round(res['nrms_signal'], 5),
+                    round(res['peak_offset_mm'], 4)])
+    print(f"\nSaved: compare_x0.png, img_cpu.npy, img_gpu.npy, and a row in {csv_path}\n")
     Img = Img_gpu
 else:
     backend = args.backend
