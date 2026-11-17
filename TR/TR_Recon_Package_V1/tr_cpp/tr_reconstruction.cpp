@@ -1,3 +1,5 @@
+#define _USE_MATH_DEFINES
+
 #include <pybind11/pybind11.h> // tools to connect C++ to Python
 #include <pybind11/numpy.h> // to pass numpy arrays between Python and C++
 #include <cmath>

@@ -1,0 +1,5 @@
+date,dataset,voxel_mm,gpu,cpu_threads,gpu_runs,cpu_runs,gpu_median_ms,cpu_median_ms,speedup,corr_signal,nrms_signal,peak_offset_mm
+2026-11-17T16:55:24,d3_PMUT_61_channels_400.mat,0.05,NVIDIA T400 4GB,24,1,1,101.2,3310.55,32.71,0.99115,0.13907,0.2345
+2026-11-17T17:21:22,pmut_#28_bead150_3_PMUT_61_channels_64.mat,0.05,NVIDIA T400 4GB,24,1,1,112.95,2151.68,19.05,0.97119,0.23869,0.1803
+2026-11-17T17:28:31,pmut_#20_bead150_1_PMUT_61_channels_64.mat,0.05,NVIDIA T400 4GB,24,1,1,132.78,2111.51,15.9,0.89468,0.54301,0.0707
+2026-11-17T17:30:09,pmut_#38_bead150_6_PMUT_61_channels_64.mat,0.05,NVIDIA T400 4GB,24,1,1,109.06,2199.78,20.17,0.95058,0.31498,0.1225

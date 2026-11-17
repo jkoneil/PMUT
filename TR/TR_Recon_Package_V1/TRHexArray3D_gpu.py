@@ -45,11 +45,10 @@ args = parser.parse_args()
 # INPUTS
 # =============================================================================
 data = sio.loadmat(args.data)
-data_all = data['data_all']
+data_all = data['data_raw']
 
-PASignal = data_all[490:900, :].astype(float)   # MATLAB rows 491-900
-PASignal[:, 51] = 0                              # noisy channels (MATLAB 52, 34)
-PASignal[:, 33] = 0
+PASignal = data_all[100:400, :].astype(float)   # start at the artifact, 300 samples is about 7 mm of depth
+PASignal[:30, :] = 0 
 PASignal[:79, :] = 0                             # laser-pulse reverb
 
 coord = np.loadtxt('coordsHexagonal0p5mm.txt')   # PMUT centers (file units; x0.001 -> mm)
@@ -58,7 +57,7 @@ coord = np.loadtxt('coordsHexagonal0p5mm.txt')   # PMUT centers (file units; x0.
 # PARAMETERS
 # =============================================================================
 co  = 1.5    # speed of sound, mm/us (water at room temp)
-dt  = 0.02   # time step, microseconds (50 MHz sampling rate)
+dt  = 0.016  # time step, microseconds (50 MHz sampling rate)
 dxo = 0.05   # voxel size x, mm
 dyo = 0.05   # voxel size y, mm
 dzo = 0.05   # voxel size z, mm
