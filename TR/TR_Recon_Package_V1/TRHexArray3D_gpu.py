@@ -19,6 +19,8 @@ import time
 import argparse
 import numpy as np
 import scipy.io as sio
+import warnings
+warnings.filterwarnings('ignore', message='CUDA path could not be detected')
 
 # --- headless-safe plotting (SSH sessions have no display) ---
 import matplotlib
@@ -306,7 +308,7 @@ if not args.no_slicer:
         if sys.platform == 'darwin':
             SLICER_EXE = '/Applications/Slicer.app/Contents/MacOS/Slicer'
         elif os.name == 'nt':
-            SLICER_EXE = r'C:\Users\<you>\AppData\Local\slicer.org\Slicer 5.x.x\Slicer.exe'   # <- edit
+            SLICER_EXE = r'C:\Users\kennedy\AppData\Local\slicer.org\3D Slicer 5.12.4\Slicer.exe'
         else:
             SLICER_EXE = 'Slicer'
         extra = (dict(creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
@@ -314,25 +316,3 @@ if not args.no_slicer:
         subprocess.Popen([SLICER_EXE, '--python-script', os.path.join(HERE, 'slicer_watch.py')],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **extra)
         print("Opening 3D Slicer...")
-
-
-""" 
-Add this to MATLAB code : 
-%% --- run the Python reconstruction on the dataset just created ---
-datasetName = 'pmut_#20_bead150_1_PMUT_61_channels_64';   % <- use the variable/name your script saves under
-
-pythonExe    = 'D:\kennedy\PMUT\venv\Scripts\python.exe';
-reconScript  = 'D:\kennedy\PMUT\TR\TR_Recon_Package_V1\TRHexArray3D_gpu.py';
-processedDir = 'D:\kennedy\PMUT\TR\Processed';
-
-matPath = fullfile(processedDir, [datasetName '.mat']);
-
-cmd = sprintf('"%s" "%s" --data "%s"', pythonExe, reconScript, matPath);
-if ispc, cmd = ['"' cmd '"']; end          % cmd.exe quoting fix
-[status, out] = system(cmd);
-disp(out)
-if status ~= 0
-    error('Reconstruction failed (exit %d)', status);
-end
-
-"""
