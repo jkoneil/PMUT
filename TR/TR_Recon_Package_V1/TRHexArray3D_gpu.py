@@ -39,15 +39,16 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--backend', choices=['auto', 'gpu', 'cpu'], default='auto')
 parser.add_argument('--compare', action='store_true', help='run GPU and CPU, report agreement')
 parser.add_argument('--data', default='../Processed/d3_PMUT_61_channels_400.mat')
+parser.add_argument('--no-slicer', action='store_true', help="don't open the result in 3D Slicer")
 args = parser.parse_args()
 
 # =============================================================================
 # INPUTS
 # =============================================================================
 data = sio.loadmat(args.data)
-data_all = data['data_raw']
+data_all = data['data_filt']
 
-PASignal = data_all[100:400, :].astype(float)   # start at the artifact, 300 samples is about 7 mm of depth
+PASignal = data_all[100:650, :].astype(float)   # start at the artifact, 300 samples is about 7 mm of depth
 PASignal[:30, :] = 0 
 PASignal[:79, :] = 0                             # laser-pulse reverb
 
@@ -57,7 +58,7 @@ coord = np.loadtxt('coordsHexagonal0p5mm.txt')   # PMUT centers (file units; x0.
 # PARAMETERS
 # =============================================================================
 co  = 1.5    # speed of sound, mm/us (water at room temp)
-dt  = 0.016  # time step, microseconds (50 MHz sampling rate)
+dt  = 0.016  # time step, microseconds (62.5 MHz sampling rate)
 dxo = 0.05   # voxel size x, mm
 dyo = 0.05   # voxel size y, mm
 dzo = 0.05   # voxel size z, mm
@@ -239,7 +240,8 @@ else:
 
 np.save('img_reconstruction.npy', Img)
 
-# =============================================================================
+
+"""# =============================================================================
 # 2D SLICE (X = 0)
 # =============================================================================
 x0_idx = np.argmin(np.abs(xo))
@@ -283,3 +285,54 @@ if matplotlib.get_backend().lower() != 'agg': # for headless space setup
     plt.show()
 else:
     print("Headless session: saved pa_slice_x0.png, pa_isosurface_3d.png, img_reconstruction.npy")
+"""
+# =============================================================================
+# 3D Slicer
+# =============================================================================
+# Format for 3D slicer
+from scipy.signal import hilbert
+Env = np.abs(hilbert(Img, axis=0)).astype(np.float32)        # envelope along depth (z)
+np.savez('img_slicer_tmp.npz', volume=Env,
+         origin=[xo[0], yo[0], zo[0]], spacing=[dxo, dyo, dzo],
+         name=os.path.splitext(os.path.basename(args.data))[0])
+os.replace('img_slicer_tmp.npz', 'img_slicer.npz') # Stop slicer from reading file before written
+
+if not args.no_slicer:
+    beat = os.path.join(HERE, '.slicer_watching')
+    if os.path.exists(beat) and time.time() - os.path.getmtime(beat) < 5:
+        print("Slicer is already open - it will reload the new result automatically.")
+    else:
+        import subprocess
+        if sys.platform == 'darwin':
+            SLICER_EXE = '/Applications/Slicer.app/Contents/MacOS/Slicer'
+        elif os.name == 'nt':
+            SLICER_EXE = r'C:\Users\<you>\AppData\Local\slicer.org\Slicer 5.x.x\Slicer.exe'   # <- edit
+        else:
+            SLICER_EXE = 'Slicer'
+        extra = (dict(creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+                 if os.name == 'nt' else dict(start_new_session=True))
+        subprocess.Popen([SLICER_EXE, '--python-script', os.path.join(HERE, 'slicer_watch.py')],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **extra)
+        print("Opening 3D Slicer...")
+
+
+""" 
+Add this to MATLAB code : 
+%% --- run the Python reconstruction on the dataset just created ---
+datasetName = 'pmut_#20_bead150_1_PMUT_61_channels_64';   % <- use the variable/name your script saves under
+
+pythonExe    = 'D:\kennedy\PMUT\venv\Scripts\python.exe';
+reconScript  = 'D:\kennedy\PMUT\TR\TR_Recon_Package_V1\TRHexArray3D_gpu.py';
+processedDir = 'D:\kennedy\PMUT\TR\Processed';
+
+matPath = fullfile(processedDir, [datasetName '.mat']);
+
+cmd = sprintf('"%s" "%s" --data "%s"', pythonExe, reconScript, matPath);
+if ispc, cmd = ['"' cmd '"']; end          % cmd.exe quoting fix
+[status, out] = system(cmd);
+disp(out)
+if status ~= 0
+    error('Reconstruction failed (exit %d)', status);
+end
+
+"""

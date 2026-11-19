@@ -4,6 +4,8 @@ __pycache__/
 volume_1.npy
 volume.npy
 volume_origin.npz
+.slicer_watching
+img_slicer.npz
 
 .vscode/
 *.png
