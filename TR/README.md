@@ -131,3 +131,67 @@ Might need to adjust hard-coded values, dt and co, zmax, BLANK_MM
 If you manually open 3D slicer before running the program, you need to go to the python console in slicer and open the slieer_watch file : 
 p = "/path/slicer_watch.py"
 exec(open(p).read(), {"__file__": p})
+
+
+
+
+
+MATLAB : 
+
+## Data processing pipeline
+
+Raw Verasonics data goes through three steps, all run by `process_dataset.m`:
+
+| Step | Function | Input | Output (in `Processed/`) |
+|---|---|---|---|
+| 1. Average | `PA_average_dataset.m` | Raw dataset folder (frames + time tags) | `<name>_<N>_Averaged.mat` — frames averaged per MUX (`data_avg`) |
+| 2. Map & merge | `PA_map_and_merge.m` | `<name>_<N>_Averaged.mat` | `<name>_PMUT_61_channels_64.mat` — 61-channel data (`data_raw`, `data_filt`, `*_interp`) |
+| 3. Reconstruct | `TR/TR_Recon_Package_V1/TRHexArray3D_gpu.py` | `<name>_PMUT_61_channels_64.mat` | 3D image, shown in 3D Slicer |
+
+### Running it
+
+1. Open `process_dataset.m` in MATLAB and click **Run**.
+2. In the folder browser, select one **dataset folder** (e.g. `pmut_#46_hair_1`).
+3. Wait — progress is printed for each step, and the result opens in 3D Slicer.
+
+The dataset name is taken from the folder name chosen at acquisition; nothing needs to be edited per dataset.
+
+### Folder structure
+
+**Raw data** (from the Verasonics, one folder per day, one subfolder per dataset):
+
+    Data_09252026/
+    └── pmut_#46_hair_1/                  <- select this folder
+        ├── pmut_#46_hair_1_timetag/        Verasonics time tags (Timetag_1.mat, ...)
+        ├── NI_timetag/                     NI card time tags (time_tag_pmut_#46_hair_1_1.mat, ...)
+        └── pmut_#46_hair_1/                raw frames (Frame_1.mat, Frame_2.mat, ...)
+
+Dataset naming: `pmut_#<device>_<target>_<n>`, e.g. `pmut_#46_hair_1` = device #46, hair target, first dataset.
+
+**Processing folder** (code and outputs, kept together):
+
+    <processing folder>/
+    ├── process_dataset.m             run this
+    ├── PA_average_dataset.m          step 1
+    ├── PA_map_and_merge.m            step 2
+    ├── Processed/                    outputs of steps 1 and 2 (created automatically)
+    ├── TR/TR_Recon_Package_V1/       step 3: Python reconstruction
+    └── venv/                         Python environment (see Setup)
+
+The raw data can stay anywhere (local drive or NAS); it is only read, never modified.
+
+### Settings (top of `process_dataset.m`)
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `num_avg` | 400 | Frames averaged per MUX |
+| `openSlicer` | true | Show the result in 3D Slicer |
+| `pyOptions` | `''` | Extra options for the reconstruction (e.g. `'--zmax 8'`) |
+
+Hardware constants (Verasonics channels `[1, 61, 68, 128, 129, 189, 196, 256]`, 8 NI time-tag files, and the MUX-to-pMUT lookup table for the new die batch) are inside the functions and only change if the wiring or pMUT batch changes.
+
+### Notes
+
+- `data_filt` (11–16 MHz band-pass) is saved for reference; the reconstruction uses `data_raw` with its own 12 MHz low-pass filter.
+- `.mat` files are saved with `-v7` so Python can read them.
+- The original scripts (`YTang_PA_Data_Quick_AveragingV3.m`, `Map_and_Merge_V6.m`, `TRHexArray3D1mmpMUT_TK.m`) are unchanged and can still be used manually.

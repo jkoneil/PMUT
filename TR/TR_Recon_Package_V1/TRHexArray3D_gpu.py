@@ -51,7 +51,7 @@ co  = 1.5    # speed of sound, mm/us (water at room temp)
 dt  = 0.016  # time step, microseconds (62.5 MHz sampling rate)
 dxo = 0.05   # voxel size x, mm
 dyo = 0.05   # voxel size y, mm
-dzo = 0.05   # voxel size z, mm
+dzo = 0.025   # voxel size z, mm
 
 zmin = 0.0   # axial bounds, mm
 zmax = 13.0
@@ -67,7 +67,7 @@ ThetaMax = np.pi / 6
 # INPUTS
 # =============================================================================
 data = sio.loadmat(args.data)
-data_all = data['data_raw']
+data_all = data['data_filt']
 
 # time zero: find where the laser artifact starts (normally row 100)
 base  = np.median(data_all[:50], axis=0)                     # quiet samples before the artifact
@@ -83,12 +83,12 @@ PASignal = data_all[T0_ROW:T0_ROW + n_keep, :].astype(float)
 PASignal[:n_blank, :] = 0
 
 # low-pass filter: keep the PMUT's band (~7.5 MHz), remove the high-frequency content that caused the ring
-from scipy.signal import butter, filtfilt
-fs = 1 / dt                                      # sampling rate in MHz (dt is in microseconds)
-b, a = butter(4, 12 / (fs / 2))                  # 12 MHz cutoff, 62.5 MHz sampling rate
-PASignal = filtfilt(b, a, PASignal, axis=0)      # forward + backward, so no time shift
+#from scipy.signal import butter, filtfilt
+#fs = 1 / dt                                      # sampling rate in MHz (dt is in microseconds)
+#b, a = butter(4, 14 / (fs / 2))                  # 12 MHz cutoff, 62.5 MHz sampling rate
+#PASignal = filtfilt(b, a, PASignal, axis=0)      # forward + backward, so no time shift
 
-coord = np.loadtxt('coordsHexagonal0p5mm.txt')   # PMUT centers (file units; x0.001 -> mm)
+coord = np.loadtxt('coordsHex61_2mm.txt')   # PMUT centers (file units; x0.001 -> mm)
 
 # =============================================================================
 # BACKENDS
