@@ -42,6 +42,8 @@ parser.add_argument('--backend', choices=['auto', 'gpu', 'cpu'], default='auto')
 parser.add_argument('--compare', action='store_true', help='run GPU and CPU, report agreement')
 parser.add_argument('--data', default='../Processed/d3_PMUT_61_channels_400.mat')
 parser.add_argument('--no-slicer', action='store_true', help="don't open the result in 3D Slicer")
+parser.add_argument('--t0-row', type=int, default=None,
+                    help='set time zero by hand (0-based row); default = detect the laser-artifact onset')
 args = parser.parse_args()
 
 # =============================================================================
@@ -49,8 +51,8 @@ args = parser.parse_args()
 # =============================================================================
 co  = 1.5    # speed of sound, mm/us (water at room temp)
 dt  = 0.016  # time step, microseconds (62.5 MHz sampling rate)
-dxo = 0.025   # voxel size x, mm
-dyo = 0.025   # voxel size y, mm
+dxo = 0.05   # voxel size x, mm
+dyo = 0.05   # voxel size y, mm
 dzo = 0.025   # voxel size z, mm
 
 zmin = 0.0   # axial bounds, mm
@@ -69,11 +71,21 @@ ThetaMax = np.pi / 6
 data = sio.loadmat(args.data)
 data_all = data['data_filt']
 
-# time zero: find where the laser artifact starts (normally row 100)
-base  = np.median(data_all[:50], axis=0)                     # quiet samples before the artifact
-level = np.abs(data_all - base).mean(axis=1)
-T0_ROW = int(np.argmax(level > 0.05 * level.max()))
-print(f"laser artifact starts at row {T0_ROW}")              # should print 100 for current setup
+# ---- time zero: first sample where the laser artifact rises above the background noise ----
+raw_t0 = data['data_raw'].astype(float)
+base   = np.median(raw_t0[:50], axis=0)
+level  = np.abs(raw_t0 - base).mean(axis=1)
+quiet  = level[:50]
+thr    = quiet.mean() + 5 * quiet.std()
+above  = level > thr                     # must exist before the next line
+RUN    = 3                               # must stay above for 3 samples in a row
+T0_ROW = next(i for i in range(len(level) - RUN) if above[i:i + RUN].all())
+
+if args.t0_row is not None:
+    T0_ROW = args.t0_row                 # manual override
+elif T0_ROW < 50:
+    print("WARNING: time zero detected inside the quiet window, check the data")
+print(f"time zero (laser artifact onset): row {T0_ROW}")
 
 BLANK_MM = 0.8                                               # blank the artifact: ~first 0.8 mm
 n_blank  = int(np.ceil(BLANK_MM / (co * dt)))
@@ -81,12 +93,6 @@ n_keep   = int(np.ceil(zmax / (co * dt))) + 2                # enough samples to
 
 PASignal = data_all[T0_ROW:T0_ROW + n_keep, :].astype(float)
 PASignal[:n_blank, :] = 0
-
-# low-pass filter: keep the PMUT's band (~7.5 MHz), remove the high-frequency content that caused the ring
-#from scipy.signal import butter, filtfilt
-#fs = 1 / dt                                      # sampling rate in MHz (dt is in microseconds)
-#b, a = butter(4, 14 / (fs / 2))                  # 12 MHz cutoff, 62.5 MHz sampling rate
-#PASignal = filtfilt(b, a, PASignal, axis=0)      # forward + backward, so no time shift
 
 coord = np.loadtxt('coordsHex61_2mm.txt')   # PMUT centers (file units; x0.001 -> mm)
 
@@ -184,7 +190,7 @@ if args.compare:
     gpu_name = cp.cuda.runtime.getDeviceProperties(0)['name'].decode()
     cpu_threads = tr_cpp.num_threads if tr_cpp.openmp_enabled else 1
     print(f"GPU: {gpu_name}   |   CPU OpenMP threads: {cpu_threads}")
-    print(f"Grid: {len(zo)} x {len(xo)} x {len(yo)} voxels ({dxo} mm)\n")
+    print(f"Grid: {len(zo)} x {len(xo)} x {len(yo)} voxels (dx={dxo}, dy={dyo}, dz={dzo} mm)")
 
     print(f"Running GPU ({GPU_RUNS} timed runs + warm-up)...")
     Img_gpu, t_gpu = time_runs(
@@ -242,7 +248,7 @@ if args.compare:
             w.writerow(['date', 'dataset', 'voxel_mm', 'gpu', 'cpu_threads', 'gpu_runs', 'cpu_runs',
                         'gpu_median_ms', 'cpu_median_ms', 'speedup', 'corr_signal', 'nrms_signal',
                         'peak_offset_mm'])
-        w.writerow([datetime.datetime.now().isoformat(timespec='seconds'), os.path.basename(args.data), dxo,
+        w.writerow([datetime.datetime.now().isoformat(timespec='seconds'), os.path.basename(args.data), f"{dxo}x{dyo}x{dzo}",
                     gpu_name, cpu_threads, GPU_RUNS, CPU_RUNS, round(g_med*1000, 2), round(c_med*1000, 2),
                     round(c_med / g_med, 2), round(res['corr_signal'], 5), round(res['nrms_signal'], 5),
                     round(res['peak_offset_mm'], 4)])
