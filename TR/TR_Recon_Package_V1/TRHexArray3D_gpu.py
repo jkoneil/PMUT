@@ -45,23 +45,6 @@ parser.add_argument('--no-slicer', action='store_true', help="don't open the res
 args = parser.parse_args()
 
 # =============================================================================
-# INPUTS
-# =============================================================================
-data = sio.loadmat(args.data)
-data_all = data['data_raw']
-
-PASignal = data_all[100:650, :].astype(float)   # start at the artifact, 300 samples is about 7 mm of depth
-PASignal[:30, :] = 0 
-PASignal[:79, :] = 0                             # laser-pulse reverb
-
-# low-pass filter: keep the PMUT's band (~7.5 MHz), remove the high-frequency content that caused the ring
-from scipy.signal import butter, filtfilt
-b, a = butter(4, 12 / (62.5 / 2))                # 12 MHz cutoff, 62.5 MHz sampling rate
-PASignal = filtfilt(b, a, PASignal, axis=0)      # forward + backward, so no time shift
-
-coord = np.loadtxt('coordsHexagonal0p5mm.txt')   # PMUT centers (file units; x0.001 -> mm)
-
-# =============================================================================
 # PARAMETERS
 # =============================================================================
 co  = 1.5    # speed of sound, mm/us (water at room temp)
@@ -79,6 +62,32 @@ xo = np.arange(-xmax, xmax + dxo, dxo)
 yo = np.arange(-ymax, ymax + dyo, dyo)
 zo = np.arange(zmin,  zmax + dzo, dzo)
 ThetaMax = np.pi / 6
+
+# =============================================================================
+# INPUTS
+# =============================================================================
+data = sio.loadmat(args.data)
+data_all = data['data_raw']
+
+# time zero: find where the laser artifact starts (normally row 100)
+base  = np.median(data_all[:50], axis=0)                     # quiet samples before the artifact
+level = np.abs(data_all - base).mean(axis=1)
+T0_ROW = int(np.argmax(level > 0.05 * level.max()))
+print(f"laser artifact starts at row {T0_ROW}")              # should print 100 for current setup
+
+BLANK_MM = 0.8                                               # blank the artifact: ~first 0.8 mm
+n_blank  = int(np.ceil(BLANK_MM / (co * dt)))
+n_keep   = int(np.ceil(zmax / (co * dt))) + 2                # enough samples to cover the whole grid depth
+
+PASignal = data_all[T0_ROW:T0_ROW + n_keep, :].astype(float)
+PASignal[:n_blank, :] = 0
+
+# low-pass filter: keep the PMUT's band (~7.5 MHz), remove the high-frequency content that caused the ring
+from scipy.signal import butter, filtfilt
+b, a = butter(4, 12 / (62.5 / 2))                # 12 MHz cutoff, 62.5 MHz sampling rate
+PASignal = filtfilt(b, a, PASignal, axis=0)      # forward + backward, so no time shift
+
+coord = np.loadtxt('coordsHexagonal0p5mm.txt')   # PMUT centers (file units; x0.001 -> mm)
 
 # =============================================================================
 # BACKENDS
