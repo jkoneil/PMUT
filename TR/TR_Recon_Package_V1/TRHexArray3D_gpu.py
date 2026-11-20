@@ -135,8 +135,8 @@ def run_cpu():
 # =============================================================================
 # COMPARE / BENCHMARK  (used when --compare is given)
 # =============================================================================
-GPU_RUNS = 20             # timed GPU runs (after one untimed warm-up)
-CPU_RUNS = 20             # timed CPU runs (after one untimed warm-up)
+GPU_RUNS = 1             # timed GPU runs (after one untimed warm-up)
+CPU_RUNS = 1             # timed CPU runs (after one untimed warm-up)
 
 
 
