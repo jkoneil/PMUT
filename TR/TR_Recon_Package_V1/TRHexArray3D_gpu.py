@@ -48,11 +48,16 @@ args = parser.parse_args()
 # INPUTS
 # =============================================================================
 data = sio.loadmat(args.data)
-data_all = data['data_filt']
+data_all = data['data_raw']
 
 PASignal = data_all[100:650, :].astype(float)   # start at the artifact, 300 samples is about 7 mm of depth
 PASignal[:30, :] = 0 
 PASignal[:79, :] = 0                             # laser-pulse reverb
+
+# low-pass filter: keep the PMUT's band (~7.5 MHz), remove the high-frequency content that caused the ring
+from scipy.signal import butter, filtfilt
+b, a = butter(4, 12 / (62.5 / 2))                # 12 MHz cutoff, 62.5 MHz sampling rate
+PASignal = filtfilt(b, a, PASignal, axis=0)      # forward + backward, so no time shift
 
 coord = np.loadtxt('coordsHexagonal0p5mm.txt')   # PMUT centers (file units; x0.001 -> mm)
 
@@ -299,20 +304,39 @@ np.savez('img_slicer_tmp.npz', volume=Env,
          name=os.path.splitext(os.path.basename(args.data))[0])
 os.replace('img_slicer_tmp.npz', 'img_slicer.npz') # Stop slicer from reading file before written
 
+def find_slicer():
+    """Find 3D Slicer on Mac or Windows. Set a SLICER_EXE environment variable to override."""
+    import glob, shutil
+    env = os.environ.get('SLICER_EXE')
+    if env and os.path.exists(env):
+        return env
+    cands = []
+    if sys.platform == 'darwin':
+        cands += ['/Applications/Slicer.app/Contents/MacOS/Slicer',
+                  os.path.expanduser('~/Applications/Slicer.app/Contents/MacOS/Slicer')]
+    elif os.name == 'nt':
+        for base in (os.environ.get('LOCALAPPDATA', ''), os.environ.get('ProgramFiles', '')):
+            cands += glob.glob(os.path.join(base, 'slicer.org', '*', 'Slicer.exe'))
+            cands += glob.glob(os.path.join(base, '*Slicer*', 'Slicer.exe'))
+    found = shutil.which('Slicer')
+    if found:
+        cands.append(found)
+    cands = [c for c in cands if c and os.path.exists(c)]
+    return max(cands, key=os.path.getmtime) if cands else None   # newest install if several
+
+
 if not args.no_slicer:
     beat = os.path.join(HERE, '.slicer_watching')
     if os.path.exists(beat) and time.time() - os.path.getmtime(beat) < 5:
         print("Slicer is already open - it will reload the new result automatically.")
     else:
-        import subprocess
-        if sys.platform == 'darwin':
-            SLICER_EXE = '/Applications/Slicer.app/Contents/MacOS/Slicer'
-        elif os.name == 'nt':
-            SLICER_EXE = r'C:\Users\kennedy\AppData\Local\slicer.org\3D Slicer 5.12.4\Slicer.exe'
+        SLICER_EXE = find_slicer()
+        if SLICER_EXE is None:
+            print("Couldn't find 3D Slicer - install it, or set the SLICER_EXE environment variable.")
         else:
-            SLICER_EXE = 'Slicer'
-        extra = (dict(creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
-                 if os.name == 'nt' else dict(start_new_session=True))
-        subprocess.Popen([SLICER_EXE, '--python-script', os.path.join(HERE, 'slicer_watch.py')],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **extra)
-        print("Opening 3D Slicer...")
+            import subprocess
+            extra = (dict(creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+                     if os.name == 'nt' else dict(start_new_session=True))
+            subprocess.Popen([SLICER_EXE, '--python-script', os.path.join(HERE, 'slicer_watch.py')],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **extra)
+            print(f"Opening 3D Slicer ({SLICER_EXE})...")

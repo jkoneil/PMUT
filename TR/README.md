@@ -44,12 +44,12 @@ python3 -c "import tr_cpp; print('OpenMP:', tr_cpp.openmp_enabled, 'Threads:', t
 
 ## Running the Reconstruction
 
-python3 TRHexArray3D_para.py
+python3 TRHexArray3D_para.py --data "filename"
 
 This will:
-1. Load the PA signal dataset from `Processed/d3_PMUT_61_channels_400.mat`
+1. Load the PA signal dataset from `Processed/filename.mat`
 2. Run the time reversal reconstruction
-3. Display a 2D slice at X=0 and a 3D isosurface
+3. Display using 3D slicer
 
 ---
 
@@ -74,3 +74,21 @@ The reconstruction kernel is written in C++ for performance. Optimizations over 
 - Trigonometric values are precomputed once per time step rather than recalculated on every inner loop iteration
 - OpenMP parallelizes the reconstruction across all available CPU cores, with per-thread accumulation buffers to avoid lock contention
 - Memory buffers are reused across sensor calls rather than reallocated each time
+
+
+
+When calling from MATLAB : 
+
+Expects Python code at PMUT/venv
+
+cd /d C:\wherever\they\put\PMUT
+python -m venv venv
+venv\Scripts\activate.bat
+
+python -m pip install --upgrade pip
+pip install numpy scipy matplotlib scikit-image pybind11
+pip install cupy-cuda12x
+
+To build the CPU module : 
+cd TR\TR_Recon_Package_V1
+python setup.py build_ext --inplace
