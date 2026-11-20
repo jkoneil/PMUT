@@ -263,6 +263,24 @@ else:
 
 np.save('img_reconstruction.npy', Img)
 
+# =============================================================================
+# QUICK RESULTS: depth + -6 dB resolution (abs of raw image, MATLAB method)
+# =============================================================================
+def fwhm(profile, axis_mm):
+    """Width from the first to the last sample >= 50% of the profile's max (-6 dB)."""
+    p = profile / profile.max()
+    idx = np.where(p >= 0.5)[0]
+    return axis_mm[idx[-1]] - axis_mm[idx[0]]
+
+A = np.abs(Img)
+iz, ix, iy = np.unravel_index(np.argmax(A), A.shape)      # Img layout is (z, x, y)
+print("\n---------------- RESULT ----------------")
+print(f"dataset:   {os.path.splitext(os.path.basename(args.data))[0]}")
+print(f"peak at:   z = {zo[iz]:.3f} mm   x = {xo[ix]:.3f} mm   y = {yo[iy]:.3f} mm")
+print(f"-6 dB:     axial {fwhm(A[:, ix, iy], zo):.3f} mm   "
+      f"lateral Y {fwhm(A[iz, ix, :], yo):.3f} mm   "
+      f"lateral X {fwhm(A[iz, :, iy], xo):.3f} mm")
+print("----------------------------------------\n")
 
 """# =============================================================================
 # 2D SLICE (X = 0)
