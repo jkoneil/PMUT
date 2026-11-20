@@ -6,6 +6,10 @@ volume.npy
 volume_origin.npz
 .slicer_watching
 img_slicer.npz
+benchmark_results.csv
+inspect_output.txt
+tr_cpp.cp312-win_amd64.pyd
+../Processed/OneDrive_1_11-17-2026.zip
 
 .vscode/
 *.png

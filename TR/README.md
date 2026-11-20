@@ -92,3 +92,38 @@ pip install cupy-cuda12x
 To build the CPU module : 
 cd TR\TR_Recon_Package_V1
 python setup.py build_ext --inplace
+
+
+
+## Files needed to run
+
+Download these from `TR/TR_Recon_Package_V1/`:
+
+| File | Purpose |
+|---|---|
+| `TRHexArray3D_gpu.py` | Main program |
+| `coordsHexagonal0p5mm.txt` | Sensor positions |
+| `tr_gpu.py` | GPU reconstruction (Python side) |
+| `tr_kernel.cu` | GPU reconstruction (CUDA kernel) |
+| `tr_cpp/` (folder) | CPU reconstruction source code |
+| `setup.py` | Builds the CPU module (`python setup.py build_ext --inplace`) |
+| `load_recon_into_slicer.py` | Loads the result into 3D Slicer |
+| `slicer_watch.py` | Keeps Slicer open and reloads new results |
+| `requirements.txt` | Python packages to install |
+
+Plus at least one data file in `TR/Processed/` (a `.mat` file containing `data_raw`).
+
+Keep the folder structure:
+
+    PMUT/
+    └── TR/
+        ├── Processed/              <- data (.mat)
+        └── TR_Recon_Package_V1/    <- files above
+
+
+If a new experiment changes:
+medium -- change speed of sound
+sampling interval dt = 0.016
+trigger timing
+
+lines in code must be adjusted
