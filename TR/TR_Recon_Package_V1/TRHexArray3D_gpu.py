@@ -49,8 +49,8 @@ args = parser.parse_args()
 # =============================================================================
 co  = 1.5    # speed of sound, mm/us (water at room temp)
 dt  = 0.016  # time step, microseconds (62.5 MHz sampling rate)
-dxo = 0.05   # voxel size x, mm
-dyo = 0.05   # voxel size y, mm
+dxo = 0.025   # voxel size x, mm
+dyo = 0.025   # voxel size y, mm
 dzo = 0.025   # voxel size z, mm
 
 zmin = 0.0   # axial bounds, mm
@@ -129,8 +129,8 @@ def run_cpu():
 # =============================================================================
 # COMPARE / BENCHMARK  (used when --compare is given)
 # =============================================================================
-GPU_RUNS = 1             # timed GPU runs (after one untimed warm-up)
-CPU_RUNS = 1             # timed CPU runs (after one untimed warm-up)
+GPU_RUNS = 20             # timed GPU runs (after one untimed warm-up)
+CPU_RUNS = 20             # timed CPU runs (after one untimed warm-up)
 
 
 
