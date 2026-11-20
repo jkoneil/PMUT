@@ -124,6 +124,10 @@ Keep the folder structure:
 If a new experiment changes:
 medium -- change speed of sound
 sampling interval dt = 0.016
-trigger timing
+Detection past ~13mm or closer than ~1mm 
+Might need to adjust hard-coded values, dt and co, zmax, BLANK_MM
 
-lines in code must be adjusted
+
+If you manually open 3D slicer before running the program, you need to go to the python console in slicer and open the slieer_watch file : 
+p = "/path/slicer_watch.py"
+exec(open(p).read(), {"__file__": p})

@@ -84,7 +84,8 @@ PASignal[:n_blank, :] = 0
 
 # low-pass filter: keep the PMUT's band (~7.5 MHz), remove the high-frequency content that caused the ring
 from scipy.signal import butter, filtfilt
-b, a = butter(4, 12 / (62.5 / 2))                # 12 MHz cutoff, 62.5 MHz sampling rate
+fs = 1 / dt                                      # sampling rate in MHz (dt is in microseconds)
+b, a = butter(4, 12 / (fs / 2))                  # 12 MHz cutoff, 62.5 MHz sampling rate
 PASignal = filtfilt(b, a, PASignal, axis=0)      # forward + backward, so no time shift
 
 coord = np.loadtxt('coordsHexagonal0p5mm.txt')   # PMUT centers (file units; x0.001 -> mm)
