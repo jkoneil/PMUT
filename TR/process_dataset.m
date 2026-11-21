@@ -18,6 +18,7 @@ clear; close all; clc;
 %% settings
 num_avg     = 400;      % frames averaged per MUX
 openSlicer  = true;     % show the result in 3D Slicer
+t0Row       = 96;       % time zero (laser artifact onset), Python row = MATLAB row 97; [] = auto-detect
 pyOptions   = '';       % extra options for the reconstruction, e.g. '--zmax 8'
 
 %% paths (works whether this file is in PMUT/ or in PMUT/TR/)
@@ -69,6 +70,7 @@ tic; mergedFile = PA_map_and_merge(avgFile, outDir); toc
 fprintf('3/3  Reconstructing...\n');
 cmd = sprintf('"%s" "%s" --data "%s" %s', pythonExe, reconScript, mergedFile, pyOptions);
 if ~openSlicer, cmd = [cmd ' --no-slicer']; end
+if ~isempty(t0Row), cmd = [cmd sprintf(' --t0-row %d', t0Row)]; end
 if ispc, cmd = ['"' cmd '"']; end
 tic; [status, out] = system(cmd); toc
 disp(out)
