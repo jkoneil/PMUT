@@ -225,12 +225,19 @@ if args.compare:
 
     # ---- difference picture (X = 0 slice, shared color scale) ----
     ix = np.argmin(np.abs(xo))
+    # Uncomment this next line to zoom in on the peak, but make sure to also update 10 lines down
+    iz, _, iy = np.unravel_index(np.argmax(np.abs(a_n)), a_n.shape)   # where the bead is (z, y)
+    
     fig, axs = plt.subplots(1, 3, figsize=(14, 7))
     ext = [yo[0], yo[-1], zo[0], zo[-1]]
     for ax, im_, title, cm, lim in ((axs[0], a_n[:, ix, :], 'CPU (normalized)', 'hot', (0, 1)),
                                     (axs[1], b_n[:, ix, :], 'GPU (normalized)', 'hot', (0, 1)),
                                     (axs[2], d_n[:, ix, :], 'CPU - GPU', 'coolwarm', (-0.2, 0.2))):
         h = ax.imshow(im_, extent=ext, origin='lower', aspect='equal', cmap=cm, vmin=lim[0], vmax=lim[1])
+        # Uncomment the next two lines to zoom in on peak
+        ax.set_xlim(yo[iy] - 1.5, yo[iy] + 1.5)      # zoom: 3 mm window around the bead
+        ax.set_ylim(zo[iz] - 1.5, zo[iz] + 1.5)
+        
         ax.set_title(title); ax.set_xlabel('y [mm]'); ax.set_ylabel('z [mm]')
         plt.colorbar(h, ax=ax, fraction=0.046)
     plt.tight_layout()
